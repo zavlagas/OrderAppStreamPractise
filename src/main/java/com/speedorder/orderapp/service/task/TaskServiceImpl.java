@@ -3,8 +3,11 @@ package com.speedorder.orderapp.service.task;
 import com.speedorder.orderapp.entity.Customer;
 import com.speedorder.orderapp.entity.Order;
 import com.speedorder.orderapp.entity.Product;
+import com.speedorder.orderapp.exception.custom.ResourceNotFoundException;
 import com.speedorder.orderapp.service.order.OrderService;
 import com.speedorder.orderapp.service.product.ProductService;
+import com.speedorder.orderapp.util.OptionalCollection;
+import com.speedorder.orderapp.util.OptionalMap;
 import com.speedorder.orderapp.util.OrderUtils;
 import com.speedorder.orderapp.util.ProductUtils;
 import org.springframework.stereotype.Service;
@@ -37,117 +40,141 @@ class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public Stream<Product> collectProductsByCategoryAndMinimumPrice(String category, double price) {
-        return collectProductsByCategory(category)
-                .filter(product -> product.getPrice() > price);
+    public List<Product> collectProductsByCategoryAndMinimumPrice(String category, double price) {
+        return OptionalCollection
+                .of(collectProductsByCategory(category)
+                        .filter(product -> product.getPrice() > price).collect(Collectors.toList()))
+                .orElseThrow(() -> new ResourceNotFoundException(String.format("There is no data with this category [ %s ] on our database", category)));
     }
 
     @Override
-    public Stream<Order> collectOrdersWithProductsByCategory(String category) {
-        return orderService.findAll()
-                .stream()
-                .filter(order -> order
-                        .getProducts()
+    public List<Order> collectOrdersWithProductsByCategory(String category) {
+        return OptionalCollection.of(
+                        orderService.findAll()
+                                .stream()
+                                .filter(order -> order
+                                        .getProducts()
+                                        .stream()
+                                        .anyMatch(product -> product.getCategory().equalsIgnoreCase(category)))
+                                .collect(Collectors.toList()))
+                .orElseThrow(() -> new ResourceNotFoundException(String.format("There is no data with this category [ %s ] on our database", category)));
+
+    }
+
+
+    @Override
+    public List<Product> collectProductsWithCategoryAndDiscount(String category, int percentage) {
+        return OptionalCollection.of(collectProductsByCategory(category).map(ProductUtils.discount(percentage)).collect(Collectors.toList()))
+                .orElseThrow(() -> new ResourceNotFoundException(String.format("There is no data with this category [ %s ] on our database to discount", category)));
+    }
+
+    @Override
+    public List<Product> collectProductsOrderedByCustomerAndSpecificOrderDateCalendar(int tier, String startDate, String endDate) {
+        return OptionalCollection.of(orderService.findAll()
                         .stream()
-                        .anyMatch(product -> product.getCategory().equalsIgnoreCase(category)));
-
-    }
-
-
-    @Override
-    public Stream<Product> collectProductsWithCategoryAndDiscount(String category, int discount) {
-        return collectProductsByCategory(category).map(ProductUtils.discount(discount));
-    }
-
-    @Override
-    public Stream<Product> collectProductsOrderedByCustomerAndSpecificOrderDateCalendar(int tier, String startDate, String endDate) {
-        return orderService.findAll()
-                .stream()
-                .filter(order -> order.getCustomer().getTier().equals(tier))
-                .filter(OrderUtils.filterCalendar(startDate, endDate))
-                .flatMap(order -> order.getProducts().stream())
-                .distinct();
+                        .filter(order -> order.getCustomer().getTier().equals(tier))
+                        .filter(OrderUtils.filterCalendar(startDate, endDate))
+                        .flatMap(order -> order.getProducts().stream())
+                        .distinct()
+                        .collect(Collectors.toList()))
+                .orElseThrow(() -> new ResourceNotFoundException(String.format("There is no data with this category [ %d , %s , %s ] on our database", tier, startDate, endDate)));
     }
 
     @Override
-    public Stream<Product> collectCheapestProductsByCategory(String category, int numberOfProducts) {
-        return collectProductsByCategory(category)
-                .sorted(Comparator.comparing(Product::getPrice))
-                .limit(numberOfProducts);
+    public List<Product> collectCheapestProductsByCategory(String category, int numberOfProducts) {
+        return OptionalCollection
+                .of(collectProductsByCategory(category)
+                        .sorted(Comparator.comparing(Product::getPrice))
+                        .limit(numberOfProducts)
+                        .collect(Collectors.toList()))
+                .orElseThrow(() -> new ResourceNotFoundException(String.format("There is no data with this category [ %s ] on our database", category)));
     }
 
     @Override
-    public Stream<Order> collectLatestOrders(int numberOfOrders) {
-        return
-                orderService.findAll()
+    public List<Order> collectLatestOrders(int numberOfOrders) {
+
+        return OptionalCollection
+                .of(orderService.findAll()
                         .stream()
                         .sorted(Comparator.comparing(Order::getOrderDate).reversed())
-                        .limit(numberOfOrders);
+                        .limit(numberOfOrders)
+                        .collect(Collectors.toList()))
+                .orElseThrow(() -> new ResourceNotFoundException("There are no orders placed yet"));
 
 
     }
 
     @Override
-    public Stream<Product> collectOrdersWithOrderedDate(String orderedDate) {
+    public List<Product> collectOrdersWithOrderedDate(String orderedDate) {
+
+        return OptionalCollection
+                .of(orderService.findAll()
+                        .stream()
+                        .filter(OrderUtils.filterCalendar(orderedDate))
+                        .peek(order -> System.out.println(order.toString()))
+                        .flatMap(order -> order.getProducts().stream())
+                        .distinct().collect(Collectors.toList()))
+                .orElseThrow(() -> new ResourceNotFoundException(String.format("No orders placed in specific date [ %s ]", orderedDate)));
+    }
+
+    @Override
+    public Double collectLumpSumOfOrdersPlacedInSpecificDate(String orderedDate) {
+
+        return Optional.of(
+                        orderService.findAll()
+                                .stream()
+                                .filter(OrderUtils.filterCalendarOnSpecificMonthOfYear(orderedDate))
+                                .flatMap(order -> order.getProducts().stream())
+                                .mapToDouble(Product::getPrice)
+                                .sum())
+                .orElseThrow(() -> new ResourceNotFoundException(String.format("No orders placed in specific date [ %s ]", orderedDate)));
+    }
+
+    @Override
+    public double collectAverageOrdersPlacedInSpecificDate(String orderedDate) {
         return orderService.findAll()
                 .stream()
                 .filter(OrderUtils.filterCalendar(orderedDate))
-                .peek(order -> System.out.println(order.toString()))
-                .flatMap(order -> order.getProducts().stream())
-                .distinct();
-    }
-
-    @Override
-    public Optional<Double> collectLumpSumOfOrdersPlacedInSpecificDate(String orderedDate) {
-        double sum = orderService.findAll()
-                .stream()
-                .filter(OrderUtils.filterCalendarOnSpecificMonthOfYear(orderedDate))
                 .flatMap(order -> order.getProducts().stream())
                 .mapToDouble(Product::getPrice)
-                .sum();
-        return sum != 0 ? Optional.of(sum) : Optional.empty();
+                .average()
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(String.format("Found no products to calculate average for date [ %s ] ", orderedDate)));
     }
 
     @Override
-    public OptionalDouble collectAverageOrdersPlacedInSpecificDate(String orderedDate) {
-        return orderService.findAll()
-                .stream()
-                .filter(OrderUtils.filterCalendar(orderedDate))
-                .flatMap(order -> order.getProducts().stream())
-                .mapToDouble(Product::getPrice)
-                .average();
+    public DoubleSummaryStatistics collectStatisticFiguresForProductsByCategory(String category) {
+
+        return Optional.of(collectProductsByCategory(category)
+                        .mapToDouble(Product::getPrice)
+                        .summaryStatistics())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        String.format("Found no products in category [ %s ] to calculate statistics ", category)));
     }
 
     @Override
-    public Optional<DoubleSummaryStatistics> collectStatisticFiguresForProductsByCategory(String category) {
-        DoubleSummaryStatistics doubleSummaryStatistics = collectProductsByCategory(category)
-                .mapToDouble(Product::getPrice)
-                .summaryStatistics();
-        return doubleSummaryStatistics.getCount() != 0 ? Optional.of(doubleSummaryStatistics) : Optional.empty();
-    }
-
-    @Override
-    public Map<Long, Integer> collectMapWithOrderIdAndOrdersProduct() {
-        return orderService.findAll()
+    public Map<Long, Integer> collectMapWithOrderIdAndOrdersProductCount() {
+        return OptionalMap.of(orderService.findAll()
                 .stream()
                 .collect(
                         Collectors.toMap(
                                 Order::getId,
                                 Order::getProductsQuantity
                         )
-                );
+                )).orElseThrow(() -> new ResourceNotFoundException("There are no orders placed yet"));
     }
 
     @Override
     public Map<Customer, List<Order>> collectOrdersGroupedByCustomer() {
-        return orderService.findAll()
-                .stream()
-                .collect(Collectors.groupingBy(Order::getCustomer));
+        return OptionalMap.of(orderService.findAll()
+                        .stream()
+                        .collect(Collectors.groupingBy(Order::getCustomer)))
+                .orElseThrow(() -> new ResourceNotFoundException("There are no customers in our data"));
     }
 
     @Override
     public Map<Order, Double> collectMapOrderRecordWithTotalSum() {
-        return orderService.findAll()
+        return OptionalMap.of(orderService.findAll()
                 .stream()
                 .collect(
                         Collectors.toMap(
@@ -157,7 +184,7 @@ class TaskServiceImpl implements TaskService {
                                         .mapToDouble(Product::getPrice)
                                         .sum()
                         )
-                );
+                )).orElseThrow(() -> new ResourceNotFoundException("There are no orders placed yet"));
     }
 
 }

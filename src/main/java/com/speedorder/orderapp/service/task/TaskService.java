@@ -4,33 +4,35 @@ import com.speedorder.orderapp.entity.Customer;
 import com.speedorder.orderapp.entity.Order;
 import com.speedorder.orderapp.entity.Product;
 
-import java.util.*;
+import java.util.DoubleSummaryStatistics;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 public interface TaskService {
     Stream<Product> collectProductsByCategory(String category);
 
-    Stream<Product> collectProductsByCategoryAndMinimumPrice(String category, double price);
+    List<Product> collectProductsByCategoryAndMinimumPrice(String category, double price);
 
-    Stream<Order> collectOrdersWithProductsByCategory(String category);
+    List<Order> collectOrdersWithProductsByCategory(String category);
 
-    Stream<Product> collectProductsWithCategoryAndDiscount(String category, int discount);
+    List<Product> collectProductsWithCategoryAndDiscount(String category, int percentage);
 
-    Stream<Product> collectProductsOrderedByCustomerAndSpecificOrderDateCalendar(int tier, String startDate, String endDate);
+    List<Product> collectProductsOrderedByCustomerAndSpecificOrderDateCalendar(int tier, String startDate, String endDate);
 
-    Stream<Product> collectCheapestProductsByCategory(String category, int numberOfProducts);
+    List<Product> collectCheapestProductsByCategory(String category, int numberOfProducts);
 
-    Stream<Order> collectLatestOrders(int numberOfOrders);
+    List<Order> collectLatestOrders(int numberOfOrders);
 
-    Stream<Product> collectOrdersWithOrderedDate(String orderedDate);
+    List<Product> collectOrdersWithOrderedDate(String orderedDate);
 
-    Optional<Double> collectLumpSumOfOrdersPlacedInSpecificDate(String orderedDate);
+    Double collectLumpSumOfOrdersPlacedInSpecificDate(String orderedDate);
 
-    OptionalDouble collectAverageOrdersPlacedInSpecificDate(String orderedDate);
+    double collectAverageOrdersPlacedInSpecificDate(String orderedDate);
 
-    Optional<DoubleSummaryStatistics> collectStatisticFiguresForProductsByCategory(String category);
+    DoubleSummaryStatistics collectStatisticFiguresForProductsByCategory(String category);
 
-    Map<Long, Integer> collectMapWithOrderIdAndOrdersProduct();
+    Map<Long, Integer> collectMapWithOrderIdAndOrdersProductCount();
 
     Map<Customer, List<Order>> collectOrdersGroupedByCustomer();
 
