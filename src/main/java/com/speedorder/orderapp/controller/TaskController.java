@@ -63,9 +63,9 @@ public class TaskController {
 
     //    Exercise 5 — Get the cheapest products of “Books” category
     @ApiOperation(value = "returns a list of the cheapest products of the input category and with input limit size")
-    @GetMapping("/products/discount/{category}/{numberOfProducts}")
+    @GetMapping("/products/{category}/cheapest")
     public ResponseEntity<List<Product>> getCheapestProductsByCategory(@PathVariable("category") String category,
-                                                                       @PathVariable("numberOfProducts") int numberOfProducts) {
+                                                                       @RequestParam("numberOfProducts") int numberOfProducts) {
 
         return ResponseEntity.ok(taskService.collectCheapestProductsByCategory(category, numberOfProducts));
 

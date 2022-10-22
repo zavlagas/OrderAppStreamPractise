@@ -43,7 +43,7 @@ class TaskServiceImpl implements TaskService {
     public List<Product> collectProductsByCategoryAndMinimumPrice(String category, double price) {
         return OptionalCollection
                 .of(collectProductsByCategory(category)
-                        .filter(product -> product.getPrice() > price).collect(Collectors.toList()))
+                        .filter(product -> product.getPrice() >= price).collect(Collectors.toList()))
                 .orElseThrow(() -> new ResourceNotFoundException(String.format("There is no data with this category [ %s ] on our database", category)));
     }
 

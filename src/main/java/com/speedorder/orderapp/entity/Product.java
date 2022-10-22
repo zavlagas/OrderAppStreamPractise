@@ -1,6 +1,7 @@
 package com.speedorder.orderapp.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.speedorder.orderapp.util.CategoryEnum;
 import io.swagger.annotations.ApiModelProperty;
 
 import javax.persistence.*;
@@ -39,6 +40,13 @@ public class Product {
         orders = new HashSet<>();
     }
 
+    public Product(String name, CategoryEnum category, Double price) {
+        this();
+        this.name = name;
+        this.category = category.getCategory();
+        this.price = price;
+    }
+
     public Long getId() {
         return id;
     }
@@ -59,8 +67,9 @@ public class Product {
         return category;
     }
 
-    public void setCategory(String category) {
-        this.category = category;
+    public void setCategory(CategoryEnum category) {
+        this.category =
+                category.getCategory();
     }
 
     public Double getPrice() {
