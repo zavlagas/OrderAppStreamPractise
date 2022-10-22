@@ -36,7 +36,7 @@ class TaskServiceImplTest extends Specification {
     }
 
 
-    def "Collect Products By Category When The Category is Found And Not Found"() {
+    def "Collect Products By Category"() {
         given: "a product and order service"
         ProductService productService = Stub(ProductService);
         OrderService orderService = Stub(OrderService);
